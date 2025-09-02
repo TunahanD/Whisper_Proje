@@ -1,0 +1,20 @@
+# Web Framework
+Flask
+
+# Production WSGI Server for Windows
+waitress
+
+# Speech-to-Text Engine
+faster-whisper
+
+# AI/ML & Audio
+torch
+torchaudio
+numpy
+soundfile
+
+# System & Memory Monitoring
+psutil
+
+# Gürültü Azaltma (isteğe bağlı, main.py'de kullanılıyor)
+noisereduce

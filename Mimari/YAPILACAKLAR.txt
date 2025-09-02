@@ -1,0 +1,99 @@
+1- İlk olarak requirements.txt'yi kurucaz. Bunun için;
+pip install -r requirements.txt
+2-waitress-serve sunucusunu başlatıcaz. Bunun için;
+python -m waitress --host 0.0.0.0 --port 5000 app:app
+3-Farklı Senaryo;
+Harika bir soru. Başka bir bilgisayardan sunucunuza (server) erişmek, uygulamanızı gerçek dünya senaryosuna bir adım daha yaklaştırır. Bu işlemi yapmak için temel olarak üç adımı doğru bir şekilde tamamlamanız gerekiyor.
+
+İki bilgisayar varsayalım:
+
+Bilgisayar A: Üzerinde Python/Flask sunucunuzun çalıştığı bilgisayar (Server).
+
+Bilgisayar B: Üzerinde Postman'in çalıştığı ve istek gönderecek olan bilgisayar (Client).
+
+Ön Koşul: Her iki bilgisayarın da aynı yerel ağa (örneğin aynı ofis/ev Wi-Fi ağına) bağlı olduğundan emin olun.
+
+Adım 1: Sunucu Bilgisayarının (Bilgisayar A) Yerel IP Adresini Öğrenin
+Postman'in isteği nereye göndereceğini bilmesi için sunucunuzun yerel ağdaki adresini bulmanız gerekir.
+
+Sunucunun çalıştığı Bilgisayar A'da Komut İstemi'ni (CMD) veya PowerShell'i açın.
+
+ipconfig komutunu yazın ve Enter'a basın.
+
+Çıkan listede, bağlı olduğunuz ağ adaptörünü bulun (genellikle "Wireless LAN adapter Wi-Fi" veya "Ethernet adapter Ethernet").
+
+Bu adaptörün altındaki "IPv4 Address" satırını bulun. Bu, sizin yerel IP adresinizdir. Genellikle 192.168.1.x veya 10.0.0.x gibi bir formattadır.
+Harika bir soru. Başka bir bilgisayardan sunucunuza (server) erişmek, uygulamanızı gerçek dünya senaryosuna bir adım daha yaklaştırır. Bu işlemi yapmak için temel olarak üç adımı doğru bir şekilde tamamlamanız gerekiyor.
+
+İki bilgisayar varsayalım:
+
+Bilgisayar A: Üzerinde Python/Flask sunucunuzun çalıştığı bilgisayar (Server).
+
+Bilgisayar B: Üzerinde Postman'in çalıştığı ve istek gönderecek olan bilgisayar (Client).
+
+Ön Koşul: Her iki bilgisayarın da aynı yerel ağa (örneğin aynı ofis/ev Wi-Fi ağına) bağlı olduğundan emin olun.
+
+Adım 1: Sunucu Bilgisayarının (Bilgisayar A) Yerel IP Adresini Öğrenin
+Postman'in isteği nereye göndereceğini bilmesi için sunucunuzun yerel ağdaki adresini bulmanız gerekir.
+
+Sunucunun çalıştığı Bilgisayar A'da Komut İstemi'ni (CMD) veya PowerShell'i açın.
+
+ipconfig komutunu yazın ve Enter'a basın.
+
+Çıkan listede, bağlı olduğunuz ağ adaptörünü bulun (genellikle "Wireless LAN adapter Wi-Fi" veya "Ethernet adapter Ethernet").
+
+Bu adaptörün altındaki "IPv4 Address" satırını bulun. Bu, sizin yerel IP adresinizdir. Genellikle 192.168.1.x veya 10.0.0.x gibi bir formattadır.
+
+Örnek çıktı:
+
+Wireless LAN adapter Wi-Fi:
+   ...
+   IPv4 Address. . . . . . . . . . . : 192.168.1.34
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   ...
+Bu örnekte kullanmamız gereken IP adresi: 192.168.1.34
+
+Adım 2: Sunucunun Dışarıdan Gelen Bağlantıları Dinlediğinden Emin Olun
+Bu adımı zaten doğru yapıyorsunuz. Sunucuyu başlatırken kullandığınız komut:
+python -m waitress --host 0.0.0.0 --port 5000 app:app
+
+Buradaki --host 0.0.0.0 parametresi çok önemlidir. Bu, sunucuya "sadece bu bilgisayardan (localhost) gelen istekleri değil, ağdaki herhangi bir yerden gelen istekleri de kabul et" anlamına gelir. Eğer 127.0.0.1 kullansaydınız, başka bir bilgisayardan erişemezdiniz.
+
+Adım 3: Sunucu Bilgisayarında (Bilgisayar A) Güvenlik Duvarı (Firewall) Kuralı Ekleyin
+Bu en önemli ve en sık unutulan adımdır. Varsayılan olarak Windows Güvenlik Duvarı, bilinmeyen programların dışarıdan gelen bağlantı isteklerini güvenlik nedeniyle engeller. 5000 numaralı porta gelen isteklere izin veren bir kural oluşturmamız gerekiyor.
+
+Bilgisayar A'da Başlat menüsüne "Gelişmiş Güvenlik Özellikli Windows Defender Güvenlik Duvarı" yazın ve uygulamayı açın.
+
+Sol taraftaki menüden "Gelen Kurallar" (Inbound Rules) seçeneğine tıklayın.
+
+Sağ taraftaki "Eylemler" menüsünden "Yeni Kural..." (New Rule...) seçeneğine tıklayın.
+
+Açılan pencerede "Bağlantı Noktası" (Port) seçeneğini işaretleyip "İleri" deyin.
+
+"TCP" seçeneğinin işaretli olduğundan emin olun. Altına "Belirli yerel bağlantı noktaları" (Specific local ports) seçeneğini işaretleyin ve kutucuğa 5000 yazın. "İleri" deyin.
+
+"Bağlantıya izin ver" (Allow the connection) seçeneğini işaretleyip "İleri" deyin.
+
+Profil seçiminde, ağınızın türüne göre en azından "Özel" (Private) seçeneğinin işaretli olduğundan emin olun. (Ev veya ofis ağları genellikle "Özel"dir). "İleri" deyin.
+
+Kurala bir isim verin, örneğin Flask API Sunucusu (Port 5000) ve "Son" butonuna tıklayın.
+
+Artık Windows Güvenlik Duvarı, 5000 portuna gelen isteklere izin verecektir.
+
+Adım 4: Postman'den (Bilgisayar B) İsteği Gönderin
+Şimdi Bilgisayar B'ye geçip Postman'i açın.
+
+Daha önce istek için kullandığınız URL'yi güncelleyin:
+
+Eski URL: http://127.0.0.1:5000/process-audio
+
+Yeni URL: http://<BİLGİSAYAR-A'NIN-IP-ADRESİ>:5000/process-audio
+
+Adım 1'deki örnek IP adresini kullanırsak yeni URL şöyle olur:
+http://192.168.1.34:5000/process-audio
+
+Diğer tüm ayarlar (Metot: POST, Body: form-data, Key: audio_file) aynı kalacak.
+
+"Send" butonuna tıklayın.
+
+İsteğinizin artık Bilgisayar B'den Bilgisayar A'daki sunucunuza başarıyla ulaştığını göreceksiniz!
