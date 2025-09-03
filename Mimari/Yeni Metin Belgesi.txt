@@ -1,0 +1,81 @@
+Komut satırına python -m waitress ... yazdığınızda, aslında tek bir ana süreç başlatmış olursunuz. waitress bu modda çalışırken, sys.exit() komutu geldiğinde ana süreci sonlandırır ve onu izleyip yeniden başlatacak bir "yönetici" veya "gözetmen" (supervisor) yoktur. Komut satırının görevi programı bir kez çalıştırmaktır; program sonlandığında görevi biter.
+
+Linux dünyasında bu iş için Gunicorn gibi sunucular bir "ana" süreç ve birden çok "işçi" süreç modeliyle çalışır ve ana süreç, ölen işçileri yeniden başlatır. waitress ise daha basit bir yapıya sahiptir ve bu tür bir gözetmenliği kendi içinde barındırmaz.
+
+Bu sorunu çözmek için, programımızı izleyecek ve kapandığında onu yeniden başlatacak harici bir gözetmen programa ihtiyacımız var. Windows için bu işi yapan en popüler ve en basit araç NSSM (the Non-Sucking Service Manager)'dir.
+
+Çözüm: Uygulamayı NSSM ile Bir Windows Servisine Dönüştürmek
+NSSM, herhangi bir programı (bizim waitress komutumuz gibi) arka planda çalışan ve sürekli denetlenen bir Windows Servisi haline getiren ücretsiz bir araçtır. Eğer servisimiz herhangi bir nedenle (bizim durumumuzda bilerek sys.exit(1) ile) kapanırsa, NSSM bunu anında fark edip otomatik olarak yeniden başlatır.
+
+İşte adım adım yapmanız gerekenler:
+
+Adım 1: NSSM'i İndirin
+Resmi web sitesine gidin: https://nssm.cc/download
+
+En son sürümü indirin (genellikle nssm-X.XX.zip şeklinde olacaktır).
+
+ZIP dosyasını açın ve içindeki win64 (veya 32-bit kullanıyorsanız win32) klasöründeki nssm.exe dosyasını kolay erişebileceğiniz bir yere, örneğin C:\NSSM\ klasörü oluşturup içine kopyalayın.
+
+Adım 2: Komut İstemini "Yönetici Olarak" Açın
+Başlat menüsüne cmd yazın, Komut İstemi'ne sağ tıklayın ve "Yönetici olarak çalıştır" seçeneğini seçin. Bu çok önemli.
+
+Adım 3: Yeni Servisi Yükleyin
+Açılan siyah yönetici komut istemi ekranına aşağıdaki komutu yazın ve Enter'a basın. Servisimize WhisperAPI gibi bir isim verelim:
+
+DOS
+
+C:\NSSM\nssm.exe install WhisperAPI
+Bu komutu yazdığınızda karşınıza bir ayar penceresi (GUI) çıkacaktır.
+
+Adım 4: Servisi Yapılandırın
+Açılan pencerede ayarları şu şekilde yapın:
+
+Application (Uygulama) Sekmesi:
+
+Path (Yol): Python'u kurduğunuz yerdeki python.exe'nin tam yolunu yazmalısınız.
+
+Eğer yolu bilmiyorsanız, normal bir komut istemine where python yazarak bulabilirsiniz. Çıkan ilk yolu kopyalayın.
+
+Örnek: C:\Users\tdone\AppData\Local\Programs\Python\Python311\python.exe
+
+Startup directory (Başlangıç dizini): app.py dosyanızın bulunduğu klasörün tam yolunu yazın.
+
+Örnek: C:\Users\tdone\Desktop\Deneme
+
+Arguments (Argümanlar): Programı çalıştırmak için kullandığınız komutun geri kalanını yazın:
+
+-m waitress --host 0.0.0.0 --port 5000 app:app
+
+Details (Detaylar) Sekmesi (İsteğe Bağlı):
+
+Display name: Servise daha açıklayıcı bir isim verebilirsiniz, örneğin Whisper API Servisi.
+
+Restart (Yeniden Başlatma) Sekmesi:
+
+Buradaki varsayılan ayarlar genellikle yeterlidir. "Restart application on exit" (Çıkışta uygulamayı yeniden başlat) seçeneği zaten aktiftir.
+
+Tüm ayarları yaptıktan sonra "Install service" butonuna tıklayın. Başarılı olduğuna dair bir mesaj göreceksiniz.
+
+Adım 5: Servisi Başlatın
+Yönetici komut istemine geri dönün ve servisi başlatmak için şu komutu yazın:
+
+DOS
+
+nssm start WhisperAPI
+Artık uygulamanız arka planda bir Windows Servisi olarak çalışıyor. Çıktıları doğrudan terminalde görmeyeceksiniz.
+
+Adım 6: Son Test
+Şimdi curl komutunu tekrar çalıştırarak testi yapın:
+
+Bash
+
+curl "http://127.0.0.1:5000/test-memory?mb=250"
+Bu komutu çalıştırdığınızda şunlar olacak:
+
+Uygulamanız sys.exit(1) nedeniyle sonlanacak.
+
+NSSM, sürecin sonlandığını fark edecek.
+
+Ve saniyeler içinde servisi otomatik olarak yeniden başlatacak.
+
+Uygulamanın yeniden başladığını, bir-iki saniye sonra curl "http://127.0.0.1:5000/health" komutuna tekrar cevap alabildiğinizde anlayabilirsiniz. Bu yöntem, Windows üzerinde bu tür uygulamaları çalıştırmanın en sağlam ve doğru yoludur.
