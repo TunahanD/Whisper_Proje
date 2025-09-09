@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+websockets
+python-socketio
+numpy
+soundfile
+pydub
+psutil
+noisereduce
+librosa
+shlex
+faster-whisper
