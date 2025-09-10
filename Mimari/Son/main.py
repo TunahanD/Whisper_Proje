@@ -15,7 +15,7 @@ DEFAULT_CONFIG = {
     "computeType": "int8", # CPU için en hızlı seçeneklerden biri
     "targetSr": 16_000,
     "channels": 1, "dtype": "float32", "useNoiseReduction": False, "nrProfileSec": 0.30,
-    "peakTarget": 0.99, "memoryWarningGB": 8.0, "memoryRestartGB": 12.0,
+    "peakTarget": 0.99, "memoryWarningGB": 1.0, "memoryRestartGB": 8.0, # Uyarı eşiğini 3GB'a çektim
     "ffmpeg_path": "ffmpeg", "supported_formats": [".wav", ".mp3", ".mp4", ".m4a", ".flac", ".aac", ".ogg", ".webm"],
     "temp_dir": None,
 }
@@ -24,6 +24,7 @@ class TranscriptionEngine:
     def __init__(self, config=None):
         self.config = {**DEFAULT_CONFIG, **(config or {})}
         self.model = None
+        # Monitör artık burada verdiğiniz 3GB ayarıyla başlayacak
         self.memory_monitor = MemoryMonitor(warning_threshold_gb=self.config["memoryWarningGB"], restart_threshold_gb=self.config["memoryRestartGB"])
 
     def load_model(self):
@@ -37,7 +38,7 @@ class TranscriptionEngine:
             self.model = WhisperModel(ms, device=dev, compute_type=ct)
         except Exception as e:
             logger.error(f"Model yüklenemedi: {e}")
-            raise e # Hata varsa program dursun
+            raise e
             
         logger.info("✅ Model yüklendi ve hazır.")
         return self.model
@@ -50,7 +51,7 @@ class TranscriptionEngine:
         
         ffmpeg_cmd = [self.config["ffmpeg_path"], "-i", input_path, "-ar", str(self.config["targetSr"]), "-ac", "1", "-c:a", "pcm_s16le", "-y", temp_wav_path]
         try:
-            logger.info(f"FFmpeg dönüşümü başlıyor: {Path(input_path).name} -> WAV")
+            logger.info(f"FFmpeg dönüşümü başlıyor: {Path(input_path).name} -> WAV (16kHz, Mono)")
             result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='ignore')
             if result.returncode != 0:
                 error_details = f"FFmpeg işlemi başarısız. STDERR: {result.stderr.strip()}"
@@ -66,15 +67,27 @@ class TranscriptionEngine:
         if self.model is None: self.load_model()
         original_path, temp_wav_path = file_path, None
         try:
-            if Path(file_path).suffix.lower() not in ['.wav', '.pcm']:
-                temp_wav_path = self._convert_to_wav_with_ffmpeg(file_path)
-                file_path = temp_wav_path
+            temp_wav_path = self._convert_to_wav_with_ffmpeg(file_path)
             
-            audio_np, sr = sf.read(file_path, dtype="float32")
+            audio_np, sr = sf.read(temp_wav_path, dtype="float32")
             if audio_np.ndim > 1: audio_np = np.mean(audio_np, axis=1)
             
             logger.info(f"⚡ Çözümleme başlıyor: {Path(original_path).name}")
             segments, _ = self.model.transcribe(audio_np, language="tr", task="transcribe")
+            
+            # ========== YENİ EKLENEN KISIM: BELLEK KONTROLÜ ==========
+            # Ağır işlem bitti, şimdi bellek durumunu kontrol et.
+            # `should_restart` metodu hem uyarıyı gösterir hem de yeniden
+            # başlatma gerekip gerekmediğini kontrol eder.
+            stats = self.memory_monitor.get_memory_stats()
+            current_gb = stats['process_memory_gb']
+            threshold_gb = stats['warning_threshold_gb']
+            
+            logger.info("Bellek kullanımı kontrol ediliyor...")
+            if self.memory_monitor.should_restart():
+                restart_program() # Programı yeniden başlat
+            # ========================================================
+
             raw_text = " ".join(seg.text.strip() for seg in segments).strip()
             corrected_text = sozlukDuzelt2(raw_text)
             
@@ -84,19 +97,22 @@ class TranscriptionEngine:
                 try:
                     os.unlink(temp_wav_path)
                 except Exception as e: 
-                    logger.warning(f"Geçici dosya silinemedi: {e}")
+                    logger.warning(f"Geçici dosya silinemedi: {temp_wav_path} - Hata: {e}")
 
     def transcribe_from_bytes(self, audio_bytes: bytes, original_filename: str = "audio.webm") -> dict:
         file_ext = Path(original_filename).suffix.lower() or ".webm"
         temp_dir = self.config["temp_dir"] or tempfile.gettempdir()
-        temp_input = tempfile.NamedTemporaryFile(suffix=file_ext, dir=temp_dir, delete=False)
+        
+        temp_input_file = tempfile.NamedTemporaryFile(suffix=file_ext, dir=temp_dir, delete=False)
         try:
-            temp_input.write(audio_bytes)
-            temp_input.close()
-            return self.transcribe_file(temp_input.name)
+            temp_input_file.write(audio_bytes)
+            temp_input_file.close()
+            
+            return self.transcribe_file(temp_input_file.name)
         finally:
-            if os.path.exists(temp_input.name):
+            if os.path.exists(temp_input_file.name):
                 try: 
-                    os.unlink(temp_input.name)
+                    os.unlink(temp_input_file.name)
                 except Exception as e: 
-                    logger.warning(f"Geçici input dosyası silinemedi: {e}")
+                    logger.warning(f"Geçici input dosyası silinemedi: {temp_input_file.name} - Hata: {e}")
+

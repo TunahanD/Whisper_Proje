@@ -14,13 +14,13 @@ import psutil
 from typing import Optional
 
 class MemoryMonitor:
-    def __init__(self, warning_threshold_gb: float = 3.0, restart_threshold_gb: float = 5.0):
+    def __init__(self, warning_threshold_gb: float = 3.0, restart_threshold_gb: float = 8.0):
         """
         Memory monitor initialization
         
         Args:
-            warning_threshold_gb: GB cinsinden uyarı eşiği (default: 8GB)
-            restart_threshold_gb: GB cinsinden restart eşiği (default: 10GB)
+            warning_threshold_gb: GB cinsinden uyarı eşiği (default: 3GB)
+            restart_threshold_gb: GB cinsinden restart eşiği (default: 8GB)
         """
         self.warning_threshold = warning_threshold_gb * 1024 * 1024 * 1024  # Bytes
         self.restart_threshold = restart_threshold_gb * 1024 * 1024 * 1024  # Bytes

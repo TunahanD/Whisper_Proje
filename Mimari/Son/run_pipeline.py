@@ -116,11 +116,11 @@ def create_pipeline_instance(model_config=None):
 # Global pipeline instance (lazy initialization)
 _pipeline = None
 
-def get_pipeline():
+def get_pipeline(model_config=None):
     """Singleton pattern"""
     global _pipeline
     if _pipeline is None:
-        _pipeline = AudioProcessingPipeline()
+        _pipeline = AudioProcessingPipeline(model_config=model_config)
     return _pipeline
 
 def process_audio_from_memory(audio_bytes_io, original_filename: str = "audio") -> dict:
