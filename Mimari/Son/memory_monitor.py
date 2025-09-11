@@ -3,8 +3,8 @@
 # =============================
 """
 Memory monitoring modülü - Threshold tabanlı RAM izleme
-- 8GB üzeri: Warning
-- 10GB üzeri: Program restart
+- 3GB üzeri: Warning
+- 8GB üzeri: Program restart
 - Zero-impact monitoring (transkripsiyon sonrası check)
 """
 
